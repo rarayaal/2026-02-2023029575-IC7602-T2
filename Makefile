@@ -1,7 +1,7 @@
 CC = gcc
 CFLAGS = -Wall -Wextra -pedantic -std=gnu11
 
-all: prueba_calculo_subredes	
+all: prueba_calculo_subredes servidor
 
 prueba_calculo_subredes: calculadora_subredes/calculo_subredes.o calculadora_subredes/prueba_calculo_subredes.o
 	$(CC) $(CFLAGS) -o prueba_calculo_subredes calculadora_subredes/calculo_subredes.o calculadora_subredes/prueba_calculo_subredes.o
@@ -15,7 +15,22 @@ prueba_calculo_subredes.o: calculadora_subredes/prueba_calculo_subredes.c calcul
 test: calculadora_subredes/prueba_calculo_subredes
 	./calculadora_subredes/prueba_calculo_subredes
 
-clean:
-	rm -f prueba_calculo_subredes calculadora_subredes/*.o
+# Servidor TCP. Enlaza el handle_command provisional hasta que exista el parser.
+servidor: calculadora_subredes/main.o calculadora_subredes/server.o calculadora_subredes/parser_stub.o
+	$(CC) $(CFLAGS) -o servidor calculadora_subredes/main.o calculadora_subredes/server.o calculadora_subredes/parser_stub.o
 
-.PHONY: all test clean
+prueba_server: calculadora_subredes/prueba_server.o calculadora_subredes/server.o
+	$(CC) $(CFLAGS) -o prueba_server calculadora_subredes/prueba_server.o calculadora_subredes/server.o
+
+calculadora_subredes/main.o calculadora_subredes/server.o calculadora_subredes/prueba_server.o: calculadora_subredes/server.h
+
+test_server: prueba_server
+	./prueba_server
+
+run: servidor
+	./servidor
+
+clean:
+	rm -f prueba_calculo_subredes servidor prueba_server calculadora_subredes/*.o
+
+.PHONY: all test test_server run clean
