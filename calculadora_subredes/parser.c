@@ -79,30 +79,122 @@ uint32_t ip_a_entero(const char *cadena_ip) {
   return 0;
 }
 
-bool validar_mascara(const char *cadena_mascara) {
-  if (!cadena_mascara || *cadena_mascara == '\0') return false;
+bool validar_prefijo_cidr(int prefijo) {
+  return (prefijo >= 0 && prefijo <= 32);
+}
 
-  if (cadena_mascara[0] == '/') {
-    char *endptr = NULL;
-    long prefijo = strtol(cadena_mascara + 1, &endptr, 10);
-    if (*(cadena_mascara + 1) == '\0' || *endptr != '\0') {
-      return false;
-    }
-    return (prefijo >= 0 && prefijo <= 32);
+bool convertir_cidr_a_mascara(int prefijo, uint32_t *mascara) {
+  if (!validar_prefijo_cidr(prefijo)) {
+    if (mascara) *mascara = 0U;
+    return false;
   }
+  if (!mascara) return true;
 
-  if (!validar_ip(cadena_mascara)) {
+  if (prefijo == 0) {
+    *mascara = 0U;
+  } else if (prefijo == 32) {
+    *mascara = 0xFFFFFFFFU;
+  } else {
+    *mascara = (0xFFFFFFFFU << (32 - prefijo));
+  }
+  return true;
+}
+
+bool es_mascara_contigua(uint32_t mascara) {
+  if (mascara == 0U) return true;
+  uint32_t invertida = ~mascara;
+  return ((invertida & (invertida + 1U)) == 0U);
+}
+
+bool convertir_mascara_a_cidr(uint32_t mascara, int *prefijo) {
+  if (!es_mascara_contigua(mascara)) {
+    if (prefijo) *prefijo = -1;
     return false;
   }
 
-  /* Validacion de mascara decimal contigua sin dependencias externas */
-  uint32_t mascara = ip_a_entero(cadena_mascara);
-  if (mascara == 0) {
-    return (strcmp(cadena_mascara, "0.0.0.0") == 0);
+  int count = 0;
+  uint32_t temp = mascara;
+  while (temp > 0U) {
+    count += (int)(temp & 1U);
+    temp >>= 1U;
   }
 
-  uint32_t invertida = ~mascara;
-  return ((invertida & (invertida + 1)) == 0);
+  if (prefijo) {
+    *prefijo = count;
+  }
+  return true;
+}
+
+bool convertir_cidr_a_cadena_decimal(int prefijo, char *output, size_t max_len) {
+  uint32_t mascara = 0U;
+  if (!convertir_cidr_a_mascara(prefijo, &mascara) || !output || max_len == 0) {
+    return false;
+  }
+
+  unsigned int oct1 = (mascara >> 24) & 0xFFU;
+  unsigned int oct2 = (mascara >> 16) & 0xFFU;
+  unsigned int oct3 = (mascara >> 8) & 0xFFU;
+  unsigned int oct4 = mascara & 0xFFU;
+
+  snprintf(output, max_len, "%u.%u.%u.%u", oct1, oct2, oct3, oct4);
+  return true;
+}
+
+bool parsear_mascara_a_cidr(const char *mascara_str, int *prefijo) {
+  if (!mascara_str || *mascara_str == '\0') {
+    if (prefijo) *prefijo = -1;
+    return false;
+  }
+
+  const char *p = mascara_str;
+  if (*p == '/') {
+    p++;
+  }
+
+  bool todo_digitos = (*p != '\0');
+  for (size_t i = 0; p[i] != '\0'; i++) {
+    if (!isdigit((unsigned char)p[i])) {
+      todo_digitos = false;
+      break;
+    }
+  }
+
+  if (todo_digitos) {
+    char *endptr = NULL;
+    long val = strtol(p, &endptr, 10);
+    if (*endptr != '\0') {
+      if (prefijo) *prefijo = -1;
+      return false;
+    }
+    if (val >= 0 && val <= 32) {
+      if (prefijo) *prefijo = (int)val;
+      return true;
+    }
+    if (prefijo) *prefijo = -1;
+    return false;
+  }
+
+  if (!validar_ip(mascara_str)) {
+    if (prefijo) *prefijo = -1;
+    return false;
+  }
+
+  uint32_t mascara_uint = ip_a_entero(mascara_str);
+  return convertir_mascara_a_cidr(mascara_uint, prefijo);
+}
+
+bool parsear_mascara_a_entero(const char *mascara_str, uint32_t *mascara_uint) {
+  int prefijo = -1;
+  if (!parsear_mascara_a_cidr(mascara_str, &prefijo)) {
+    if (mascara_uint) *mascara_uint = 0U;
+    return false;
+  }
+  return convertir_cidr_a_mascara(prefijo, mascara_uint);
+}
+
+bool validar_mascara(const char *cadena_mascara) {
+  int prefijo = -1;
+  return parsear_mascara_a_cidr(cadena_mascara, &prefijo);
 }
 
 static bool es_numero(const char *cadena) {
@@ -206,8 +298,8 @@ bool parse_line(const char *input, parsed_command_t *cmd) {
         return false;
       }
 
-      snprintf(cmd->ip, sizeof(cmd->ip), "%s", tokens[3]);
-      snprintf(cmd->mask, sizeof(cmd->mask), "%s", tokens[5]);
+      snprintf(cmd->ip, sizeof(cmd->ip), "%.63s", tokens[3]);
+      snprintf(cmd->mask, sizeof(cmd->mask), "%.63s", tokens[5]);
       cmd->is_valid = true;
       return true;
     }
@@ -255,8 +347,8 @@ bool parse_line(const char *input, parsed_command_t *cmd) {
           return false;
         }
 
-        snprintf(cmd->ip, sizeof(cmd->ip), "%s", tokens[4]);
-        snprintf(cmd->mask, sizeof(cmd->mask), "%s", tokens[6]);
+        snprintf(cmd->ip, sizeof(cmd->ip), "%.63s", tokens[4]);
+        snprintf(cmd->mask, sizeof(cmd->mask), "%.63s", tokens[6]);
         cmd->is_valid = true;
         return true;
       }
@@ -306,8 +398,8 @@ bool parse_line(const char *input, parsed_command_t *cmd) {
           return false;
         }
 
-        snprintf(cmd->ip, sizeof(cmd->ip), "%s", tokens[4]);
-        snprintf(cmd->mask, sizeof(cmd->mask), "%s", tokens[6]);
+        snprintf(cmd->ip, sizeof(cmd->ip), "%.63s", tokens[4]);
+        snprintf(cmd->mask, sizeof(cmd->mask), "%.63s", tokens[6]);
         cmd->is_valid = true;
         return true;
       }
@@ -344,7 +436,7 @@ bool parse_line(const char *input, parsed_command_t *cmd) {
           return false;
         }
 
-        snprintf(cmd->mask, sizeof(cmd->mask), "%s", mask_val);
+        snprintf(cmd->mask, sizeof(cmd->mask), "%.63s", mask_val);
         cmd->is_valid = true;
         return true;
       }
@@ -382,7 +474,7 @@ bool parse_line(const char *input, parsed_command_t *cmd) {
         return false;
       }
 
-      snprintf(cmd->mask, sizeof(cmd->mask), "%s", mask_val);
+      snprintf(cmd->mask, sizeof(cmd->mask), "%.63s", mask_val);
       cmd->is_valid = true;
       return true;
     }
@@ -423,7 +515,7 @@ bool parse_line(const char *input, parsed_command_t *cmd) {
           return false;
         }
 
-        snprintf(cmd->ip, sizeof(cmd->ip), "%s", ip_val);
+        snprintf(cmd->ip, sizeof(cmd->ip), "%.63s", ip_val);
         cmd->is_valid = true;
         return true;
       }
@@ -486,8 +578,8 @@ bool parse_line(const char *input, parsed_command_t *cmd) {
           return false;
         }
 
-        snprintf(cmd->ip, sizeof(cmd->ip), "%s", tokens[4]);
-        snprintf(cmd->mask, sizeof(cmd->mask), "%s", tokens[6]);
+        snprintf(cmd->ip, sizeof(cmd->ip), "%.63s", tokens[4]);
+        snprintf(cmd->mask, sizeof(cmd->mask), "%.63s", tokens[6]);
         cmd->size = size_val;
         cmd->has_size = true;
         cmd->is_valid = true;
@@ -537,9 +629,9 @@ bool parse_line(const char *input, parsed_command_t *cmd) {
       }
 
       /* Preservar insensibilidad a mayusculas/minusculas para el nombre de ruta <NAME> */
-      snprintf(cmd->name, sizeof(cmd->name), "%s", tokens[2]);
-      snprintf(cmd->dest, sizeof(cmd->dest), "%s", tokens[4]);
-      snprintf(cmd->mask, sizeof(cmd->mask), "%s", tokens[6]);
+      snprintf(cmd->name, sizeof(cmd->name), "%.63s", tokens[2]);
+      snprintf(cmd->dest, sizeof(cmd->dest), "%.63s", tokens[4]);
+      snprintf(cmd->mask, sizeof(cmd->mask), "%.63s", tokens[6]);
 
       if (ntokens == 9) {
         char p7[MAX_TOKEN_LEN];
@@ -591,7 +683,7 @@ bool parse_line(const char *input, parsed_command_t *cmd) {
       }
 
       /* Preservar insensibilidad a mayusculas/minusculas para el nombre <NAME> */
-      snprintf(cmd->name, sizeof(cmd->name), "%s", tokens[2]);
+      snprintf(cmd->name, sizeof(cmd->name), "%.63s", tokens[2]);
       cmd->is_valid = true;
       return true;
     }
@@ -654,7 +746,7 @@ bool parse_line(const char *input, parsed_command_t *cmd) {
         return false;
       }
 
-      snprintf(cmd->ip, sizeof(cmd->ip), "%s", ip_val);
+      snprintf(cmd->ip, sizeof(cmd->ip), "%.63s", ip_val);
       cmd->is_valid = true;
       return true;
     }

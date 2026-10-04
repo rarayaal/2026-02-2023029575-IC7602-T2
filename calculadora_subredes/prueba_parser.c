@@ -313,8 +313,108 @@ static void test_t09_ipv4_validation_and_conversion(void) {
   printf("[OK] T09 - IPv4 validation and conversion\n");
 }
 
+static void test_t10_netmask_validation_and_conversion(void) {
+  /* 1. Validacion de prefijo CIDR (0 <= prefijo <= 32) */
+  assert(validar_prefijo_cidr(0) == true);
+  assert(validar_prefijo_cidr(8) == true);
+  assert(validar_prefijo_cidr(16) == true);
+  assert(validar_prefijo_cidr(24) == true);
+  assert(validar_prefijo_cidr(32) == true);
+  assert(validar_prefijo_cidr(-1) == false);
+  assert(validar_prefijo_cidr(33) == false);
+  assert(validar_prefijo_cidr(100) == false);
+
+  /* 2. Conversion CIDR -> mascara binaria uint32_t */
+  uint32_t mask_val = 0;
+  assert(convertir_cidr_a_mascara(0, &mask_val) == true && mask_val == 0x00000000U);
+  assert(convertir_cidr_a_mascara(1, &mask_val) == true && mask_val == 0x80000000U);
+  assert(convertir_cidr_a_mascara(8, &mask_val) == true && mask_val == 0xFF000000U);
+  assert(convertir_cidr_a_mascara(16, &mask_val) == true && mask_val == 0xFFFF0000U);
+  assert(convertir_cidr_a_mascara(24, &mask_val) == true && mask_val == 0xFFFFFF00U);
+  assert(convertir_cidr_a_mascara(30, &mask_val) == true && mask_val == 0xFFFFFFFCU);
+  assert(convertir_cidr_a_mascara(31, &mask_val) == true && mask_val == 0xFFFFFFFEU);
+  assert(convertir_cidr_a_mascara(32, &mask_val) == true && mask_val == 0xFFFFFFFFU);
+  assert(convertir_cidr_a_mascara(33, &mask_val) == false);
+  assert(convertir_cidr_a_mascara(-1, &mask_val) == false);
+
+  /* 3. Conversion CIDR -> cadena decimal */
+  char str_buf[64];
+  assert(convertir_cidr_a_cadena_decimal(0, str_buf, sizeof(str_buf)) == true && strcmp(str_buf, "0.0.0.0") == 0);
+  assert(convertir_cidr_a_cadena_decimal(8, str_buf, sizeof(str_buf)) == true && strcmp(str_buf, "255.0.0.0") == 0);
+  assert(convertir_cidr_a_cadena_decimal(16, str_buf, sizeof(str_buf)) == true && strcmp(str_buf, "255.255.0.0") == 0);
+  assert(convertir_cidr_a_cadena_decimal(24, str_buf, sizeof(str_buf)) == true && strcmp(str_buf, "255.255.255.0") == 0);
+  assert(convertir_cidr_a_cadena_decimal(25, str_buf, sizeof(str_buf)) == true && strcmp(str_buf, "255.255.255.128") == 0);
+  assert(convertir_cidr_a_cadena_decimal(30, str_buf, sizeof(str_buf)) == true && strcmp(str_buf, "255.255.255.252") == 0);
+  assert(convertir_cidr_a_cadena_decimal(32, str_buf, sizeof(str_buf)) == true && strcmp(str_buf, "255.255.255.255") == 0);
+
+  /* 4. Conversion mascara binaria uint32_t -> CIDR */
+  int prefijo_out = -1;
+  assert(convertir_mascara_a_cidr(0x00000000U, &prefijo_out) == true && prefijo_out == 0);
+  assert(convertir_mascara_a_cidr(0x80000000U, &prefijo_out) == true && prefijo_out == 1);
+  assert(convertir_mascara_a_cidr(0xFF000000U, &prefijo_out) == true && prefijo_out == 8);
+  assert(convertir_mascara_a_cidr(0xFFFF0000U, &prefijo_out) == true && prefijo_out == 16);
+  assert(convertir_mascara_a_cidr(0xFFFFFF00U, &prefijo_out) == true && prefijo_out == 24);
+  assert(convertir_mascara_a_cidr(0xFFFFFFFFU, &prefijo_out) == true && prefijo_out == 32);
+
+  /* Mascaras no contiguas rechazadas */
+  assert(convertir_mascara_a_cidr(0xFF00FF00U, &prefijo_out) == false && prefijo_out == -1);
+  assert(convertir_mascara_a_cidr(0x0000FFFFU, &prefijo_out) == false && prefijo_out == -1);
+
+  /* 5. Prueba de Reversibilidad (0..32): CIDR -> mascara -> CIDR y mascara -> CIDR -> mascara */
+  for (int p = 0; p <= 32; p++) {
+    uint32_t m = 0;
+    int p_back = -1;
+    assert(convertir_cidr_a_mascara(p, &m) == true);
+    assert(convertir_mascara_a_cidr(m, &p_back) == true);
+    assert(p == p_back);
+
+    uint32_t m_back = 0;
+    assert(convertir_cidr_a_mascara(p_back, &m_back) == true);
+    assert(m == m_back);
+  }
+
+  /* 6. Parsing de cadenas de mascara (CIDR o Decimal) */
+  assert(parsear_mascara_a_cidr("/24", &prefijo_out) == true && prefijo_out == 24);
+  assert(parsear_mascara_a_cidr("24", &prefijo_out) == true && prefijo_out == 24);
+  assert(parsear_mascara_a_cidr("/0", &prefijo_out) == true && prefijo_out == 0);
+  assert(parsear_mascara_a_cidr("/32", &prefijo_out) == true && prefijo_out == 32);
+  assert(parsear_mascara_a_cidr("255.255.255.0", &prefijo_out) == true && prefijo_out == 24);
+  assert(parsear_mascara_a_cidr("255.255.0.0", &prefijo_out) == true && prefijo_out == 16);
+  assert(parsear_mascara_a_cidr("255.0.0.0", &prefijo_out) == true && prefijo_out == 8);
+  assert(parsear_mascara_a_cidr("0.0.0.0", &prefijo_out) == true && prefijo_out == 0);
+  assert(parsear_mascara_a_cidr("255.255.255.255", &prefijo_out) == true && prefijo_out == 32);
+
+  /* Casos invalidos de parseo de mascara */
+  assert(parsear_mascara_a_cidr("/33", &prefijo_out) == false);
+  assert(parsear_mascara_a_cidr("/-1", &prefijo_out) == false);
+  assert(parsear_mascara_a_cidr("/24abc", &prefijo_out) == false);
+  assert(parsear_mascara_a_cidr("24abc", &prefijo_out) == false);
+  assert(parsear_mascara_a_cidr("255.0.255.0", &prefijo_out) == false);
+  assert(parsear_mascara_a_cidr("255.255.0.255", &prefijo_out) == false);
+  assert(parsear_mascara_a_cidr("255.0.255.255", &prefijo_out) == false);
+  assert(parsear_mascara_a_cidr("255.255.128.255", &prefijo_out) == false);
+  assert(parsear_mascara_a_cidr("192.168.0.0", &prefijo_out) == false);
+  assert(parsear_mascara_a_cidr("10.0.0.0", &prefijo_out) == false);
+  assert(parsear_mascara_a_cidr("256.0.0.0", &prefijo_out) == false);
+  assert(parsear_mascara_a_cidr("255.256.0.0", &prefijo_out) == false);
+  assert(parsear_mascara_a_cidr("255.255.a.0", &prefijo_out) == false);
+  assert(parsear_mascara_a_cidr("255.255.255.x", &prefijo_out) == false);
+  assert(parsear_mascara_a_cidr("abc", &prefijo_out) == false);
+  assert(parsear_mascara_a_cidr("", &prefijo_out) == false);
+  assert(parsear_mascara_a_cidr(".", &prefijo_out) == false);
+  assert(parsear_mascara_a_cidr("255", &prefijo_out) == false);
+  assert(parsear_mascara_a_cidr("255.255", &prefijo_out) == false);
+  assert(parsear_mascara_a_cidr("255.255.255", &prefijo_out) == false);
+  assert(parsear_mascara_a_cidr("255.255.255.255.0", &prefijo_out) == false);
+  assert(parsear_mascara_a_cidr("255..255.0", &prefijo_out) == false);
+  assert(parsear_mascara_a_cidr(".255.255.0", &prefijo_out) == false);
+  assert(parsear_mascara_a_cidr("255.255.255.", &prefijo_out) == false);
+
+  printf("[OK] T10 - Netmask validation and conversion\n");
+}
+
 int main(void) {
-  printf("=== INICIANDO PRUEBAS UNITARIAS DIRECTAS DE PARSER T-08 Y T-09 ===\n");
+  printf("=== INICIANDO PRUEBAS UNITARIAS DIRECTAS DE PARSER T-08, T-09 Y T-10 ===\n");
   test_primitiva_1_get_broadcast();
   test_primitiva_2_get_network_number();
   test_primitiva_3_get_hosts_range();
@@ -327,6 +427,7 @@ int main(void) {
   test_primitiva_10_route_ip();
   test_casos_invalidos_y_desconocidos();
   test_t09_ipv4_validation_and_conversion();
-  printf("=== TODAS LAS PRUEBAS DIRECTAS (T-08 Y T-09) PASARON CORRECTAMENTE ===\n");
+  test_t10_netmask_validation_and_conversion();
+  printf("=== TODAS LAS PRUEBAS DIRECTAS (T-08, T-09 Y T-10) PASARON CORRECTAMENTE ===\n");
   return 0;
 }

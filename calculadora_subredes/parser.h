@@ -52,6 +52,31 @@ uint32_t ip_a_entero(const char *cadena_ip);
 /* Valida si una cadena cumple con el formato de mascara (/N entre 0-32 o decimal contigua) */
 bool validar_mascara(const char *cadena_mascara);
 
+/* ========================================================================= */
+/* FUNCIONES DE T-10: CONVERSIÓN Y VALIDACIÓN DE MÁSCARAS DE RED             */
+/* ========================================================================= */
+
+/* Valida si un prefijo CIDR se encuentra en el rango [0, 32] */
+bool validar_prefijo_cidr(int prefijo);
+
+/* Convierte un prefijo CIDR (0..32) a su mascara binaria uint32_t */
+bool convertir_cidr_a_mascara(int prefijo, uint32_t *mascara);
+
+/* Valida si una mascara binaria uint32_t posee bits 1 contiguos desde el MSB */
+bool es_mascara_contigua(uint32_t mascara);
+
+/* Convierte una mascara binaria uint32_t contigua a su prefijo CIDR (0..32) */
+bool convertir_mascara_a_cidr(uint32_t mascara, int *prefijo);
+
+/* Convierte un prefijo CIDR (0..32) a su notacion decimal punteada "A.B.C.D" */
+bool convertir_cidr_a_cadena_decimal(int prefijo, char *output, size_t max_len);
+
+/* Convierte cualquier notacion de mascara (CIDR "/N" o decimal "A.B.C.D") a prefijo CIDR */
+bool parsear_mascara_a_cidr(const char *mascara_str, int *prefijo);
+
+/* Convierte cualquier notacion de mascara (CIDR "/N" o decimal "A.B.C.D") a uint32_t */
+bool parsear_mascara_a_entero(const char *mascara_str, uint32_t *mascara_uint);
+
 /* Función principal de T-08: realiza el análisis léxico, sintáctico y extracción de parámetros */
 bool parse_line(const char *input, parsed_command_t *cmd);
 
