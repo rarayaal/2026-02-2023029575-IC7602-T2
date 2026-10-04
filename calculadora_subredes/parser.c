@@ -27,22 +27,13 @@ static void str_to_upper(char *str) {
   }
 }
 
-static uint32_t ip_a_entero_local(const char *cadena_ip) {
-  unsigned int oct1 = 0, oct2 = 0, oct3 = 0, oct4 = 0;
-  if (sscanf(cadena_ip, "%u.%u.%u.%u", &oct1, &oct2, &oct3, &oct4) != 4) {
-    return 0;
-  }
-  return ((uint32_t)oct1 << 24) | ((uint32_t)oct2 << 16) |
-         ((uint32_t)oct3 << 8) | (uint32_t)oct4;
-}
-
 bool validar_ip(const char *cadena_ip) {
   if (!cadena_ip || *cadena_ip == '\0') return false;
 
-  int octetos[4];
+  long long octetos[4];
   char extra[2];
-  if (sscanf(cadena_ip, "%d.%d.%d.%d%1s", &octetos[0], &octetos[1], &octetos[2],
-             &octetos[3], extra) != 4) {
+  if (sscanf(cadena_ip, "%lld.%lld.%lld.%lld%1s", &octetos[0], &octetos[1],
+             &octetos[2], &octetos[3], extra) != 4) {
     return false;
   }
 
@@ -62,6 +53,32 @@ bool validar_ip(const char *cadena_ip) {
   return true;
 }
 
+bool convertir_ip_a_entero(const char *cadena_ip, uint32_t *ip_entero) {
+  if (!validar_ip(cadena_ip)) {
+    if (ip_entero) *ip_entero = 0;
+    return false;
+  }
+
+  unsigned int oct1 = 0, oct2 = 0, oct3 = 0, oct4 = 0;
+  sscanf(cadena_ip, "%u.%u.%u.%u", &oct1, &oct2, &oct3, &oct4);
+
+  uint32_t res = ((uint32_t)oct1 << 24) | ((uint32_t)oct2 << 16) |
+                 ((uint32_t)oct3 << 8) | (uint32_t)oct4;
+
+  if (ip_entero) {
+    *ip_entero = res;
+  }
+  return true;
+}
+
+uint32_t ip_a_entero(const char *cadena_ip) {
+  uint32_t res = 0;
+  if (convertir_ip_a_entero(cadena_ip, &res)) {
+    return res;
+  }
+  return 0;
+}
+
 bool validar_mascara(const char *cadena_mascara) {
   if (!cadena_mascara || *cadena_mascara == '\0') return false;
 
@@ -79,7 +96,7 @@ bool validar_mascara(const char *cadena_mascara) {
   }
 
   /* Validacion de mascara decimal contigua sin dependencias externas */
-  uint32_t mascara = ip_a_entero_local(cadena_mascara);
+  uint32_t mascara = ip_a_entero(cadena_mascara);
   if (mascara == 0) {
     return (strcmp(cadena_mascara, "0.0.0.0") == 0);
   }

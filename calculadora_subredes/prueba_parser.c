@@ -240,8 +240,81 @@ static void test_casos_invalidos_y_desconocidos(void) {
   printf("[OK] Casos invalidos y desconocidos\n");
 }
 
+static void test_t09_ipv4_validation_and_conversion(void) {
+  uint32_t val = 0;
+
+  /* 1. Conversiones validas y verificacion de uint32_t exacto */
+  assert(convertir_ip_a_entero("0.0.0.0", &val) == true && val == 0U);
+  assert(ip_a_entero("0.0.0.0") == 0U);
+
+  assert(convertir_ip_a_entero("0.0.0.1", &val) == true && val == 1U);
+  assert(ip_a_entero("0.0.0.1") == 1U);
+
+  assert(convertir_ip_a_entero("0.0.1.0", &val) == true && val == 256U);
+  assert(ip_a_entero("0.0.1.0") == 256U);
+
+  assert(convertir_ip_a_entero("1.0.0.0", &val) == true && val == 16777216U);
+  assert(ip_a_entero("1.0.0.0") == 16777216U);
+
+  assert(convertir_ip_a_entero("10.0.0.1", &val) == true && val == 167772161U);
+  assert(convertir_ip_a_entero("127.0.0.1", &val) == true && val == 2130706433U);
+  assert(convertir_ip_a_entero("172.16.0.1", &val) == true && val == 2886729729U);
+
+  assert(convertir_ip_a_entero("192.168.1.1", &val) == true && val == 3232235777U);
+  assert(ip_a_entero("192.168.1.1") == 3232235777U);
+
+  assert(convertir_ip_a_entero("255.255.255.254", &val) == true && val == 4294967294U);
+  assert(convertir_ip_a_entero("255.255.255.255", &val) == true && val == 4294967295U);
+  assert(ip_a_entero("255.255.255.255") == 4294967295U);
+
+  /* Ceros a la izquierda */
+  assert(convertir_ip_a_entero("001.002.003.004", &val) == true && val == 16909060U);
+
+  /* 2. Casos invalidos por rango */
+  assert(validar_ip("256.0.0.1") == false);
+  assert(validar_ip("192.256.1.1") == false);
+  assert(validar_ip("192.168.256.1") == false);
+  assert(validar_ip("192.168.1.256") == false);
+  assert(validar_ip("999.999.999.999") == false);
+  assert(validar_ip("-1.0.0.0") == false);
+  assert(convertir_ip_a_entero("256.0.0.1", &val) == false && val == 0U);
+
+  /* 3. Casos invalidos por caracteres no numericos */
+  assert(validar_ip("abc.168.1.1") == false);
+  assert(validar_ip("192.abc.1.1") == false);
+  assert(validar_ip("192.168.abc.1") == false);
+  assert(validar_ip("192.168.1.abc") == false);
+  assert(validar_ip("192.168.a.1") == false);
+  assert(validar_ip("192.168.1x.1") == false);
+  assert(validar_ip("192_168_1_1") == false);
+  assert(validar_ip("192-168-1-1") == false);
+  assert(validar_ip("192.168.1.1abc") == false);
+  assert(validar_ip("abc192.168.1.1") == false);
+  assert(convertir_ip_a_entero("192.168.1x.1", &val) == false);
+
+  /* 4. Casos invalidos por formato malformado o espacios */
+  assert(validar_ip("192.168.1") == false);
+  assert(validar_ip("192.168") == false);
+  assert(validar_ip("192") == false);
+  assert(validar_ip("192.168.1.1.1") == false);
+  assert(validar_ip("192..168.1.1") == false);
+  assert(validar_ip(".192.168.1.1") == false);
+  assert(validar_ip("192.168.1.1.") == false);
+  assert(validar_ip("192.168..1") == false);
+  assert(validar_ip("..192.168.1") == false);
+  assert(validar_ip("") == false);
+  assert(validar_ip(" ") == false);
+  assert(validar_ip("   ") == false);
+  assert(validar_ip(".") == false);
+  assert(validar_ip("...") == false);
+  assert(validar_ip(" 192.168.1.1") == false);
+  assert(validar_ip("192.168.1.1 ") == false);
+
+  printf("[OK] T09 - IPv4 validation and conversion\n");
+}
+
 int main(void) {
-  printf("=== INICIANDO PRUEBAS UNITARIAS DIRECTAS DE PARSER T-08 ===\n");
+  printf("=== INICIANDO PRUEBAS UNITARIAS DIRECTAS DE PARSER T-08 Y T-09 ===\n");
   test_primitiva_1_get_broadcast();
   test_primitiva_2_get_network_number();
   test_primitiva_3_get_hosts_range();
@@ -253,6 +326,7 @@ int main(void) {
   test_primitiva_9_get_random_subnets();
   test_primitiva_10_route_ip();
   test_casos_invalidos_y_desconocidos();
-  printf("=== TODAS LAS PRUEBAS DIRECTAS DE PARSER PASARON CORRECTAMENTE ===\n");
+  test_t09_ipv4_validation_and_conversion();
+  printf("=== TODAS LAS PRUEBAS DIRECTAS (T-08 Y T-09) PASARON CORRECTAMENTE ===\n");
   return 0;
 }

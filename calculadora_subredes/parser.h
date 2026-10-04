@@ -42,6 +42,13 @@ void parser_init_command(parsed_command_t *cmd);
 /* Valida si una cadena cumple con el formato IPv4 (A.B.C.D, 0-255 por octeto) */
 bool validar_ip(const char *cadena_ip);
 
+/* Convierte una direccion IPv4 en notacion decimal punteada a entero de 32 bits.
+   Retorna true si la conversion fue exitosa, almacenando el resultado en *ip_entero. (T-09) */
+bool convertir_ip_a_entero(const char *cadena_ip, uint32_t *ip_entero);
+
+/* Retorna la representacion entera de 32 bits de una IPv4. Retorna 0 si es invalida. (T-09) */
+uint32_t ip_a_entero(const char *cadena_ip);
+
 /* Valida si una cadena cumple con el formato de mascara (/N entre 0-32 o decimal contigua) */
 bool validar_mascara(const char *cadena_mascara);
 
