@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "subnet-calculator.fullname" . }}
+  labels:
+    {{- include "subnet-calculator.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "subnet-calculator.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "subnet-calculator.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: telnet
+              containerPort: {{ .Values.service.targetPort }}
+              protocol: TCP
+          livenessProbe:
+            tcpSocket:
+              port: telnet
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          readinessProbe:
+            tcpSocket:
+              port: telnet
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
