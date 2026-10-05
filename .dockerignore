@@ -1,0 +1,11 @@
+.git
+.gitignore
+*.o
+*.dSYM
+prueba_calculo_subredes
+prueba_server
+servidor
+docs/
+deploy/
+scripts/
+*.md
