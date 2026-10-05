@@ -3,6 +3,19 @@
 #include <string.h>
 #include <stdbool.h>
 
+/**
+ * @file prueba_sintactica.c
+ * @brief Batería de pruebas sintácticas completas para T-14.
+ *
+ * Cubre de forma exhaustiva tres categorías fundamentales:
+ *  - Categoría A: Comandos válidos de subredes y enrutamiento (T14-01 a T14-25).
+ *  - Categoría B: Combinaciones sintácticas inválidas y errores de parámetros (T14-26 a T14-55).
+ *  - Categoría C: Valores extremos y límites de protocolo (T14-56 a T14-75).
+ *
+ * Cada caso de prueba está estructurado con su ID único, categoría, entrada de comando,
+ * resultado de sintaxis esperado y la justificación o motivo comprobado.
+ */
+
 typedef struct {
     const char *id;
     const char *categoria;
@@ -125,8 +138,10 @@ int main(void) {
         else if (strcmp(tc.categoria, "Extremo") == 0) extreme_count++;
 
         const char *status_str = test_passed ? "PASS" : "FAIL";
+        (void)status_str;
         const char *exp_str = tc.expected_valid ? "Aceptada" : "Rechazada";
         const char *got_str = cmd.is_valid ? "Aceptada" : "Rechazada";
+
 
         if (test_passed) {
             pass_count++;
