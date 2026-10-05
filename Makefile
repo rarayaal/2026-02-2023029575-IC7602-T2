@@ -1,7 +1,7 @@
 CC = gcc
 CFLAGS = -Wall -Wextra -pedantic -std=gnu11
 
-all: prueba_calculo_subredes servidor prueba_parser prueba_param_extractor prueba_error_catalog prueba_dispatcher
+all: prueba_calculo_subredes servidor prueba_parser prueba_param_extractor prueba_error_catalog prueba_dispatcher prueba_sintactica
 
 prueba_calculo_subredes: calculadora_subredes/calculo_subredes.o calculadora_subredes/prueba_calculo_subredes.o
 	$(CC) $(CFLAGS) -o prueba_calculo_subredes calculadora_subredes/calculo_subredes.o calculadora_subredes/prueba_calculo_subredes.o
@@ -24,6 +24,9 @@ calculadora_subredes/parser.o: calculadora_subredes/parser.c calculadora_subrede
 calculadora_subredes/prueba_parser.o: calculadora_subredes/prueba_parser.c calculadora_subredes/parser.h
 	$(CC) $(CFLAGS) -c calculadora_subredes/prueba_parser.c -o calculadora_subredes/prueba_parser.o
 
+calculadora_subredes/prueba_sintactica.o: calculadora_subredes/prueba_sintactica.c calculadora_subredes/parser.h
+	$(CC) $(CFLAGS) -c calculadora_subredes/prueba_sintactica.c -o calculadora_subredes/prueba_sintactica.o
+
 calculadora_subredes/param_extractor.o: calculadora_subredes/param_extractor.c calculadora_subredes/param_extractor.h calculadora_subredes/parser.h
 	$(CC) $(CFLAGS) -c calculadora_subredes/param_extractor.c -o calculadora_subredes/param_extractor.o
 
@@ -36,12 +39,13 @@ calculadora_subredes/dispatcher.o: calculadora_subredes/dispatcher.c calculadora
 calculadora_subredes/prueba_dispatcher.o: calculadora_subredes/prueba_dispatcher.c calculadora_subredes/dispatcher.h
 	$(CC) $(CFLAGS) -c calculadora_subredes/prueba_dispatcher.c -o calculadora_subredes/prueba_dispatcher.o
 
-test: prueba_calculo_subredes prueba_parser prueba_param_extractor prueba_error_catalog prueba_dispatcher test_server
+test: prueba_calculo_subredes prueba_parser prueba_param_extractor prueba_error_catalog prueba_dispatcher prueba_sintactica test_server
 	./prueba_calculo_subredes
 	./prueba_parser
 	./prueba_param_extractor
 	./prueba_error_catalog
 	./prueba_dispatcher
+	./prueba_sintactica
 
 # Servidor TCP. Enlaza el parser real T-08.
 servidor: calculadora_subredes/main.o calculadora_subredes/server.o calculadora_subredes/parser.o calculadora_subredes/calculo_subredes.o calculadora_subredes/error_catalog.o calculadora_subredes/dispatcher.o
@@ -52,6 +56,9 @@ prueba_server: calculadora_subredes/prueba_server.o calculadora_subredes/server.
 
 prueba_parser: calculadora_subredes/prueba_parser.o calculadora_subredes/parser.o calculadora_subredes/error_catalog.o
 	$(CC) $(CFLAGS) -o prueba_parser calculadora_subredes/prueba_parser.o calculadora_subredes/parser.o calculadora_subredes/error_catalog.o
+
+prueba_sintactica: calculadora_subredes/prueba_sintactica.o calculadora_subredes/parser.o calculadora_subredes/error_catalog.o
+	$(CC) $(CFLAGS) -o prueba_sintactica calculadora_subredes/prueba_sintactica.o calculadora_subredes/parser.o calculadora_subredes/error_catalog.o
 
 prueba_param_extractor: calculadora_subredes/prueba_param_extractor.o calculadora_subredes/param_extractor.o calculadora_subredes/parser.o calculadora_subredes/error_catalog.o
 	$(CC) $(CFLAGS) -o prueba_param_extractor calculadora_subredes/prueba_param_extractor.o calculadora_subredes/param_extractor.o calculadora_subredes/parser.o calculadora_subredes/error_catalog.o
@@ -71,6 +78,7 @@ run: servidor
 	./servidor
 
 clean:
-	rm -f prueba_calculo_subredes servidor prueba_server prueba_parser prueba_param_extractor prueba_error_catalog prueba_dispatcher calculadora_subredes/*.o
+	rm -f prueba_calculo_subredes servidor prueba_server prueba_parser prueba_param_extractor prueba_error_catalog prueba_dispatcher prueba_sintactica calculadora_subredes/*.o
 
-.PHONY: all test test_server run clean prueba_param_extractor prueba_error_catalog prueba_dispatcher
+.PHONY: all test test_server run clean prueba_param_extractor prueba_error_catalog prueba_dispatcher prueba_sintactica
+
