@@ -2,6 +2,7 @@
 #include "error_catalog.h"
 #include "calculo_subredes.h"
 #include "routing.h"
+#include "dispatcher.h"
 
 #include <ctype.h>
 #include <stdio.h>
@@ -841,10 +842,21 @@ void handle_command(const char *input, char *output, size_t max_len) {
         return;
       }
 
-      default:
-        snprintf(output, max_len, "PARSED OK: primitiva %d validada",
-                 (int)cmd.primitive);
+      default: {
+        /* Primitivas 1 a 6: el despacho de T-13 llama al modulo de calculo. */
+        extracted_params_t params;
+        dispatch_result_t result;
+        dispatch_result_init(&result);
+        if (!extraer_parametros_comando(&cmd, &params)) {
+          err_cat_invalid_syntax(result.error_msg, sizeof(result.error_msg),
+                                 "extraccion de parametros");
+        } else if (dispatch_extracted_params(&params, &result)) {
+          snprintf(output, max_len, "%s", result.result_str);
+          return;
+        }
+        snprintf(output, max_len, "%s", result.error_msg);
         return;
+      }
     }
   }
 }
