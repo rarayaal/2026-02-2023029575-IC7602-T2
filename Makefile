@@ -18,7 +18,7 @@ calculadora_subredes/error_catalog.o: calculadora_subredes/error_catalog.c calcu
 calculadora_subredes/prueba_error_catalog.o: calculadora_subredes/prueba_error_catalog.c calculadora_subredes/error_catalog.h calculadora_subredes/parser.h
 	$(CC) $(CFLAGS) -c calculadora_subredes/prueba_error_catalog.c -o calculadora_subredes/prueba_error_catalog.o
 
-calculadora_subredes/parser.o: calculadora_subredes/parser.c calculadora_subredes/parser.h calculadora_subredes/error_catalog.h calculadora_subredes/calculo_subredes.h calculadora_subredes/routing.h
+calculadora_subredes/parser.o: calculadora_subredes/parser.c calculadora_subredes/parser.h calculadora_subredes/error_catalog.h calculadora_subredes/calculo_subredes.h calculadora_subredes/routing.h calculadora_subredes/dispatcher.h calculadora_subredes/param_extractor.h
 	$(CC) $(CFLAGS) -c calculadora_subredes/parser.c -o calculadora_subredes/parser.o
 
 calculadora_subredes/prueba_parser.o: calculadora_subredes/prueba_parser.c calculadora_subredes/parser.h
@@ -54,24 +54,24 @@ test: prueba_calculo_subredes prueba_parser prueba_routing prueba_param_extracto
 	./prueba_dispatcher
 	./prueba_sintactica
 
-# Servidor TCP. Enlaza el parser real T-08.
-servidor: calculadora_subredes/main.o calculadora_subredes/server.o calculadora_subredes/parser.o calculadora_subredes/calculo_subredes.o calculadora_subredes/error_catalog.o calculadora_subredes/routing.o
-	$(CC) $(CFLAGS) -o servidor calculadora_subredes/main.o calculadora_subredes/server.o calculadora_subredes/parser.o calculadora_subredes/calculo_subredes.o calculadora_subredes/error_catalog.o calculadora_subredes/routing.o
+# Servidor TCP. Enlaza el parser real (T-08) y el despacho a los modulos de calculo (T-13).
+servidor: calculadora_subredes/main.o calculadora_subredes/server.o calculadora_subredes/parser.o calculadora_subredes/calculo_subredes.o calculadora_subredes/error_catalog.o calculadora_subredes/routing.o calculadora_subredes/dispatcher.o calculadora_subredes/param_extractor.o
+	$(CC) $(CFLAGS) -o servidor calculadora_subredes/main.o calculadora_subredes/server.o calculadora_subredes/parser.o calculadora_subredes/calculo_subredes.o calculadora_subredes/error_catalog.o calculadora_subredes/routing.o calculadora_subredes/dispatcher.o calculadora_subredes/param_extractor.o
 
 prueba_server: calculadora_subredes/prueba_server.o calculadora_subredes/server.o
 	$(CC) $(CFLAGS) -o prueba_server calculadora_subredes/prueba_server.o calculadora_subredes/server.o
 
-prueba_parser: calculadora_subredes/prueba_parser.o calculadora_subredes/parser.o calculadora_subredes/calculo_subredes.o calculadora_subredes/error_catalog.o calculadora_subredes/routing.o
-	$(CC) $(CFLAGS) -o prueba_parser calculadora_subredes/prueba_parser.o calculadora_subredes/parser.o calculadora_subredes/calculo_subredes.o calculadora_subredes/error_catalog.o calculadora_subredes/routing.o
+prueba_parser: calculadora_subredes/prueba_parser.o calculadora_subredes/parser.o calculadora_subredes/calculo_subredes.o calculadora_subredes/error_catalog.o calculadora_subredes/routing.o calculadora_subredes/dispatcher.o calculadora_subredes/param_extractor.o
+	$(CC) $(CFLAGS) -o prueba_parser calculadora_subredes/prueba_parser.o calculadora_subredes/parser.o calculadora_subredes/calculo_subredes.o calculadora_subredes/error_catalog.o calculadora_subredes/routing.o calculadora_subredes/dispatcher.o calculadora_subredes/param_extractor.o
 
-prueba_sintactica: calculadora_subredes/prueba_sintactica.o calculadora_subredes/parser.o calculadora_subredes/calculo_subredes.o calculadora_subredes/error_catalog.o calculadora_subredes/routing.o
-	$(CC) $(CFLAGS) -o prueba_sintactica calculadora_subredes/prueba_sintactica.o calculadora_subredes/parser.o calculadora_subredes/calculo_subredes.o calculadora_subredes/error_catalog.o calculadora_subredes/routing.o
+prueba_sintactica: calculadora_subredes/prueba_sintactica.o calculadora_subredes/parser.o calculadora_subredes/calculo_subredes.o calculadora_subredes/error_catalog.o calculadora_subredes/routing.o calculadora_subredes/dispatcher.o calculadora_subredes/param_extractor.o
+	$(CC) $(CFLAGS) -o prueba_sintactica calculadora_subredes/prueba_sintactica.o calculadora_subredes/parser.o calculadora_subredes/calculo_subredes.o calculadora_subredes/error_catalog.o calculadora_subredes/routing.o calculadora_subredes/dispatcher.o calculadora_subredes/param_extractor.o
 
-prueba_param_extractor: calculadora_subredes/prueba_param_extractor.o calculadora_subredes/param_extractor.o calculadora_subredes/parser.o calculadora_subredes/calculo_subredes.o calculadora_subredes/error_catalog.o calculadora_subredes/routing.o
-	$(CC) $(CFLAGS) -o prueba_param_extractor calculadora_subredes/prueba_param_extractor.o calculadora_subredes/param_extractor.o calculadora_subredes/parser.o calculadora_subredes/calculo_subredes.o calculadora_subredes/error_catalog.o calculadora_subredes/routing.o
+prueba_param_extractor: calculadora_subredes/prueba_param_extractor.o calculadora_subredes/param_extractor.o calculadora_subredes/parser.o calculadora_subredes/calculo_subredes.o calculadora_subredes/error_catalog.o calculadora_subredes/routing.o calculadora_subredes/dispatcher.o
+	$(CC) $(CFLAGS) -o prueba_param_extractor calculadora_subredes/prueba_param_extractor.o calculadora_subredes/param_extractor.o calculadora_subredes/parser.o calculadora_subredes/calculo_subredes.o calculadora_subredes/error_catalog.o calculadora_subredes/routing.o calculadora_subredes/dispatcher.o
 
-prueba_error_catalog: calculadora_subredes/prueba_error_catalog.o calculadora_subredes/error_catalog.o calculadora_subredes/parser.o calculadora_subredes/calculo_subredes.o calculadora_subredes/routing.o
-	$(CC) $(CFLAGS) -o prueba_error_catalog calculadora_subredes/prueba_error_catalog.o calculadora_subredes/error_catalog.o calculadora_subredes/parser.o calculadora_subredes/calculo_subredes.o calculadora_subredes/routing.o
+prueba_error_catalog: calculadora_subredes/prueba_error_catalog.o calculadora_subredes/error_catalog.o calculadora_subredes/parser.o calculadora_subredes/calculo_subredes.o calculadora_subredes/routing.o calculadora_subredes/dispatcher.o calculadora_subredes/param_extractor.o
+	$(CC) $(CFLAGS) -o prueba_error_catalog calculadora_subredes/prueba_error_catalog.o calculadora_subredes/error_catalog.o calculadora_subredes/parser.o calculadora_subredes/calculo_subredes.o calculadora_subredes/routing.o calculadora_subredes/dispatcher.o calculadora_subredes/param_extractor.o
 
 prueba_dispatcher: calculadora_subredes/prueba_dispatcher.o calculadora_subredes/dispatcher.o calculadora_subredes/param_extractor.o calculadora_subredes/parser.o calculadora_subredes/calculo_subredes.o calculadora_subredes/error_catalog.o calculadora_subredes/routing.o
 	$(CC) $(CFLAGS) -Wl,--allow-multiple-definition -o prueba_dispatcher calculadora_subredes/prueba_dispatcher.o calculadora_subredes/dispatcher.o calculadora_subredes/param_extractor.o calculadora_subredes/parser.o calculadora_subredes/calculo_subredes.o calculadora_subredes/error_catalog.o calculadora_subredes/routing.o
