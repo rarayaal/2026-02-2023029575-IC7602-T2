@@ -195,6 +195,11 @@ static void test_primitiva_9_get_random_subnets(void) {
   /* SIZE no numerico */
   assert(parse_line("GET RANDOM SUBNETS IP 10.0.0.0 MASK /16 SIZE cuatro", &cmd) == false);
 
+  assert(parse_line("GET RANDOM SUBNETS NETWORK NUMBER 10.0.0.0 MASK /8 NUMBER 3 SIZE /24", &cmd) == true);
+  assert(cmd.has_subnet_mask == true);
+  assert(strcmp(cmd.subnet_mask, "/24") == 0);
+  assert(cmd.size == 3);
+
   printf("[OK] Primitiva 9: GET RANDOM SUBNETS\n");
 }
 
