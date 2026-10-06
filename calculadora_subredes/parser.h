@@ -44,6 +44,8 @@ typedef struct {
   bool has_priority;             /**< Indica si el parámetro opcional PRIORITY está presente */
   int size;                      /**< Cantidad de subredes aleatorias solicitadas (GET RANDOM SUBNETS) */
   bool has_size;                 /**< Indica si el parámetro SIZE está presente */
+  char subnet_mask[64];          /**< Máscara de las subredes hijas de P4 */
+  bool has_subnet_mask;          /**< Indica si se recibió la máscara hija */
   bool debug;                    /**< Flag de depuración para ROUTE IP */
   char error_msg[256];           /**< Mensaje descriptivo de error centralizado (T-12) si is_valid es false */
 } parsed_command_t;

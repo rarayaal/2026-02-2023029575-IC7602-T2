@@ -1,5 +1,7 @@
 #include "parser.h"
 #include "error_catalog.h"
+#include "calculo_subredes.h"
+#include "routing.h"
 
 #include <ctype.h>
 #include <stdio.h>
@@ -70,14 +72,6 @@ bool convertir_ip_a_entero(const char *cadena_ip, uint32_t *ip_entero) {
     *ip_entero = res;
   }
   return true;
-}
-
-uint32_t ip_a_entero(const char *cadena_ip) {
-  uint32_t res = 0;
-  if (convertir_ip_a_entero(cadena_ip, &res)) {
-    return res;
-  }
-  return 0;
 }
 
 bool validar_prefijo_cidr(int prefijo) {
@@ -498,7 +492,7 @@ bool parse_line(const char *input, parsed_command_t *cmd) {
       }
     }
 
-    /* 9. GET RANDOM SUBNETS IP <IP> MASK <MASK> SIZE <NUM> */
+    /* 9. GET RANDOM SUBNETS con sintaxis compatible y sintaxis completa. */
     if (strcmp(t1, "RANDOM") == 0) {
       if (ntokens < 3) {
         err_cat_invalid_syntax(cmd->error_msg, sizeof(cmd->error_msg), "GET RANDOM");
@@ -509,50 +503,70 @@ bool parse_line(const char *input, parsed_command_t *cmd) {
 
       if (strcmp(t2, "SUBNETS") == 0) {
         cmd->primitive = PRIMITIVE_GET_RANDOM_SUBNETS;
-        if (ntokens < 9) {
+        if (ntokens == 9) {
+          char p3[MAX_TOKEN_LEN], p5[MAX_TOKEN_LEN], p7[MAX_TOKEN_LEN];
+          snprintf(p3, sizeof(p3), "%s", tokens[3]); str_to_upper(p3);
+          snprintf(p5, sizeof(p5), "%s", tokens[5]); str_to_upper(p5);
+          snprintf(p7, sizeof(p7), "%s", tokens[7]); str_to_upper(p7);
+
+          if (strcmp(p3, "IP") != 0 || strcmp(p5, "MASK") != 0 ||
+              strcmp(p7, "SIZE") != 0 || !validar_ip(tokens[4]) ||
+              !validar_mascara(tokens[6]) || !es_numero(tokens[8])) {
+            err_cat_invalid_syntax(cmd->error_msg, sizeof(cmd->error_msg),
+                                   "GET RANDOM SUBNETS");
+            return false;
+          }
+          int size_val = atoi(tokens[8]);
+          if (size_val <= 0) {
+            err_cat_out_of_range(cmd->error_msg, sizeof(cmd->error_msg),
+                                 "el tamaño debe ser mayor a 0", tokens[8]);
+            return false;
+          }
+          snprintf(cmd->ip, sizeof(cmd->ip), "%.63s", tokens[4]);
+          snprintf(cmd->mask, sizeof(cmd->mask), "%.63s", tokens[6]);
+          cmd->size = size_val;
+          cmd->has_size = true;
+          cmd->is_valid = true;
+          return true;
+        }
+
+        if (ntokens != 12) {
           err_cat_missing_param(cmd->error_msg, sizeof(cmd->error_msg),
-                                "GET RANDOM SUBNETS", "requiere IP <IP> MASK <MASK> SIZE <NUM>");
-          return false;
-        }
-        if (ntokens > 9) {
-          err_cat_extra_params(cmd->error_msg, sizeof(cmd->error_msg), "GET RANDOM SUBNETS");
+                                "GET RANDOM SUBNETS",
+                                "requiere NETWORK NUMBER <IP> MASK <MASK> NUMBER <NUM> SIZE <MASK>");
           return false;
         }
 
-        char p3[MAX_TOKEN_LEN], p5[MAX_TOKEN_LEN], p7[MAX_TOKEN_LEN];
+        char p3[MAX_TOKEN_LEN], p4[MAX_TOKEN_LEN], p6[MAX_TOKEN_LEN];
+        char p8[MAX_TOKEN_LEN], p10[MAX_TOKEN_LEN];
         snprintf(p3, sizeof(p3), "%s", tokens[3]); str_to_upper(p3);
-        snprintf(p5, sizeof(p5), "%s", tokens[5]); str_to_upper(p5);
-        snprintf(p7, sizeof(p7), "%s", tokens[7]); str_to_upper(p7);
+        snprintf(p4, sizeof(p4), "%s", tokens[4]); str_to_upper(p4);
+        snprintf(p6, sizeof(p6), "%s", tokens[6]); str_to_upper(p6);
+        snprintf(p8, sizeof(p8), "%s", tokens[8]); str_to_upper(p8);
+        snprintf(p10, sizeof(p10), "%s", tokens[10]); str_to_upper(p10);
 
-        if (strcmp(p3, "IP") != 0 || strcmp(p5, "MASK") != 0 || strcmp(p7, "SIZE") != 0) {
-          err_cat_invalid_syntax(cmd->error_msg, sizeof(cmd->error_msg), "GET RANDOM SUBNETS");
+        if (strcmp(p3, "NETWORK") != 0 || strcmp(p4, "NUMBER") != 0 ||
+            strcmp(p6, "MASK") != 0 || strcmp(p8, "NUMBER") != 0 ||
+            strcmp(p10, "SIZE") != 0 || !validar_ip(tokens[5]) ||
+            !validar_mascara(tokens[7]) || !es_numero(tokens[9]) ||
+            !validar_mascara(tokens[11])) {
+          err_cat_invalid_syntax(cmd->error_msg, sizeof(cmd->error_msg),
+                                 "GET RANDOM SUBNETS");
           return false;
         }
-
-        if (!validar_ip(tokens[4])) {
-          err_cat_invalid_ip(cmd->error_msg, sizeof(cmd->error_msg), tokens[4]);
-          return false;
-        }
-        if (!validar_mascara(tokens[6])) {
-          err_cat_invalid_mask(cmd->error_msg, sizeof(cmd->error_msg), tokens[6]);
-          return false;
-        }
-        if (!es_numero(tokens[8])) {
-          err_cat_invalid_numeric(cmd->error_msg, sizeof(cmd->error_msg), "SIZE", tokens[8]);
-          return false;
-        }
-
-        int size_val = atoi(tokens[8]);
+        int size_val = atoi(tokens[9]);
         if (size_val <= 0) {
           err_cat_out_of_range(cmd->error_msg, sizeof(cmd->error_msg),
-                               "el tamaño debe ser mayor a 0", tokens[8]);
+                               "el numero de redes debe ser mayor a 0", tokens[9]);
           return false;
         }
 
-        snprintf(cmd->ip, sizeof(cmd->ip), "%.63s", tokens[4]);
-        snprintf(cmd->mask, sizeof(cmd->mask), "%.63s", tokens[6]);
+        snprintf(cmd->ip, sizeof(cmd->ip), "%.63s", tokens[5]);
+        snprintf(cmd->mask, sizeof(cmd->mask), "%.63s", tokens[7]);
+        snprintf(cmd->subnet_mask, sizeof(cmd->subnet_mask), "%.63s", tokens[11]);
         cmd->size = size_val;
         cmd->has_size = true;
+        cmd->has_subnet_mask = true;
         cmd->is_valid = true;
         return true;
       }
@@ -722,6 +736,115 @@ void handle_command(const char *input, char *output, size_t max_len) {
   if (!cmd.is_valid) {
     snprintf(output, max_len, "%s", cmd.error_msg);
   } else {
-    snprintf(output, max_len, "PARSED OK: primitiva %d validada", (int)cmd.primitive);
+    static route_table_t *route_table;
+    uint32_t ip = 0;
+    uint32_t network = 0;
+    int prefix = -1;
+    route_status_t status = ROUTE_STATUS_OK;
+
+    switch (cmd.primitive) {
+      case PRIMITIVE_SET_ROUTE:
+        /* La tabla persiste entre comandos durante la vida del servidor. */
+        if (!route_table) route_table = route_table_create();
+        if (!route_table || !convertir_ip_a_entero(cmd.dest, &network) ||
+            !parsear_mascara_a_cidr(cmd.mask, &prefix)) {
+          snprintf(output, max_len, "ERROR: no se pudo preparar SET ROUTE");
+          return;
+        }
+        status = route_set(route_table, cmd.name, network, prefix,
+                           cmd.has_priority ? cmd.priority : 0);
+        if (status == ROUTE_STATUS_OK) {
+          snprintf(output, max_len, "OK: ruta %s configurada", cmd.name);
+        } else {
+          snprintf(output, max_len, "ERROR: no se pudo configurar la ruta");
+        }
+        return;
+
+      case PRIMITIVE_DEL_ROUTE:
+        if (!route_table) {
+          snprintf(output, max_len, "ERROR: ruta no encontrada: %s", cmd.name);
+          return;
+        }
+        status = route_delete(route_table, cmd.name);
+        if (status == ROUTE_STATUS_OK) {
+          snprintf(output, max_len, "OK: ruta %s eliminada", cmd.name);
+        } else {
+          snprintf(output, max_len, "ERROR: ruta no encontrada: %s", cmd.name);
+        }
+        return;
+
+      case PRIMITIVE_ROUTE_IP: {
+        route_match_t match;
+        char trace[1024];
+        if (!route_table || !convertir_ip_a_entero(cmd.ip, &ip)) {
+          snprintf(output, max_len, "ERROR: no existe una ruta para %s", cmd.ip);
+          return;
+        }
+        if (cmd.debug) {
+          /* DEBUG conserva la misma seleccion y solo agrega su explicacion. */
+          status = route_lookup_debug(route_table, ip, &match, trace,
+                                      sizeof(trace));
+          if (status == ROUTE_STATUS_OK) {
+            snprintf(output, max_len, "%s%s", trace, match.name);
+          } else {
+            snprintf(output, max_len, "%s", trace);
+          }
+        } else {
+          status = route_lookup(route_table, ip, &match);
+          if (status == ROUTE_STATUS_OK) {
+            snprintf(output, max_len, "%s", match.name);
+          } else {
+            snprintf(output, max_len, "ERROR: no existe una ruta para %s", cmd.ip);
+          }
+        }
+        return;
+      }
+
+      case PRIMITIVE_GET_RANDOM_SUBNETS: {
+        if (!cmd.has_subnet_mask ||
+            !convertir_ip_a_entero(cmd.ip, &network) ||
+            !parsear_mascara_a_cidr(cmd.mask, &prefix)) {
+          snprintf(output, max_len,
+                   "ERROR: GET RANDOM SUBNETS requiere SIZE <mascara>");
+          return;
+        }
+        int subnet_prefix = -1;
+        if (!parsear_mascara_a_cidr(cmd.subnet_mask, &subnet_prefix)) {
+          snprintf(output, max_len, "ERROR: mascara de subred invalida");
+          return;
+        }
+        route_subnet_t *subnets = calloc((size_t)cmd.size, sizeof(*subnets));
+        if (!subnets) {
+          snprintf(output, max_len, "ERROR: memoria insuficiente");
+          return;
+        }
+        status = route_generate_random_subnets(network, prefix, subnet_prefix,
+                                               (size_t)cmd.size, subnets);
+        if (status != ROUTE_STATUS_OK) {
+          free(subnets);
+          snprintf(output, max_len,
+                   "ERROR: no se pudieron generar las subredes");
+          return;
+        }
+        size_t used = 0;
+        output[0] = '\0';
+        for (int index = 0; index < cmd.size; index++) {
+          char subnet_ip[16];
+          entero_a_ip(subnets[index].network, subnet_ip, sizeof(subnet_ip));
+          int written = snprintf(output + used, max_len - used, "%s%s/%u",
+                                 index == 0 ? "" : " ", subnet_ip,
+                                 subnets[index].prefix);
+          if (written < 0 || (size_t)written >= max_len - used) break;
+          used += (size_t)written;
+        }
+        free(subnets);
+        return;
+      }
+
+      default:
+        snprintf(output, max_len, "PARSED OK: primitiva %d validada",
+                 (int)cmd.primitive);
+        return;
+    }
   }
 }
