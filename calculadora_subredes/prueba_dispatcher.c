@@ -49,7 +49,7 @@ static void test_caso_2_despacho_enrutamiento(void) {
   dispatch_result_t res;
 
   /* 7. SET ROUTE */
-  assert(dispatch_command_line("SET ROUTE oficina DEST 10.0.0.0 MASK /8 PRIORITY 10", &res) == true);
+  assert(dispatch_command_line("SET ROUTE oficina NETWORK NUMBER 10.0.0.0 MASK /8 PRIORITY 10", &res) == true);
   assert(res.is_success == true);
   assert(res.primitive == PRIMITIVE_SET_ROUTE);
   assert(strstr(res.result_str, "oficina") != NULL);
@@ -68,7 +68,7 @@ static void test_caso_2_despacho_enrutamiento(void) {
   assert(strstr(res.result_str, "4") != NULL);
 
   /* 10. ROUTE IP */
-  assert(dispatch_command_line("ROUTE IP 8.8.8.8 DEBUG", &res) == true);
+  assert(dispatch_command_line("ROUTE IP 8.8.8.8 DEBUG true", &res) == true);
   assert(res.is_success == true);
   assert(res.primitive == PRIMITIVE_ROUTE_IP);
   assert(strstr(res.result_str, "8.8.8.8") != NULL);

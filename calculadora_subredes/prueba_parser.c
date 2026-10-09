@@ -136,15 +136,16 @@ static void test_primitiva_6_get_ip_class(void) {
 static void test_primitiva_7_set_route(void) {
   parsed_command_t cmd;
 
-  assert(parse_line("SET ROUTE casa DEST 192.168.1.0 MASK /24", &cmd) == true);
+  assert(parse_line("SET ROUTE casa NETWORK NUMBER 192.168.1.0 MASK /24 PRIORITY 1", &cmd) == true);
   assert(cmd.is_valid == true);
   assert(cmd.primitive == PRIMITIVE_SET_ROUTE);
   assert(strcmp(cmd.name, "casa") == 0);
   assert(strcmp(cmd.dest, "192.168.1.0") == 0);
   assert(strcmp(cmd.mask, "/24") == 0);
-  assert(cmd.has_priority == false);
+  assert(cmd.has_priority == true);
+  assert(cmd.priority == 1);
 
-  assert(parse_line("SET ROUTE oficina DEST 10.0.0.0 MASK 255.0.0.0 PRIORITY 10", &cmd) == true);
+  assert(parse_line("SET ROUTE oficina NETWORK NUMBER 10.0.0.0 MASK 255.0.0.0 PRIORITY 10", &cmd) == true);
   assert(cmd.is_valid == true);
   assert(strcmp(cmd.name, "oficina") == 0);
   assert(strcmp(cmd.dest, "10.0.0.0") == 0);
@@ -152,11 +153,14 @@ static void test_primitiva_7_set_route(void) {
   assert(cmd.has_priority == true);
   assert(cmd.priority == 10);
 
+  /* Sin prioridad (debe fallar ya que PRIORITY es obligatorio) */
+  assert(parse_line("SET ROUTE casa NETWORK NUMBER 192.168.1.0 MASK /24", &cmd) == false);
+
   /* Prioridad no numerica */
-  assert(parse_line("SET ROUTE oficina DEST 10.0.0.0 MASK /8 PRIORITY diez", &cmd) == false);
+  assert(parse_line("SET ROUTE oficina NETWORK NUMBER 10.0.0.0 MASK /8 PRIORITY diez", &cmd) == false);
 
   /* Parametro faltante */
-  assert(parse_line("SET ROUTE casa DEST 192.168.1.0", &cmd) == false);
+  assert(parse_line("SET ROUTE casa NETWORK NUMBER 192.168.1.0", &cmd) == false);
 
   printf("[OK] Primitiva 7: SET ROUTE\n");
 }
@@ -212,10 +216,18 @@ static void test_primitiva_10_route_ip(void) {
   assert(strcmp(cmd.ip, "8.8.8.8") == 0);
   assert(cmd.debug == false);
 
-  assert(parse_line("ROUTE IP 8.8.8.8 DEBUG", &cmd) == true);
+  assert(parse_line("ROUTE IP 8.8.8.8 DEBUG true", &cmd) == true);
   assert(cmd.is_valid == true);
   assert(strcmp(cmd.ip, "8.8.8.8") == 0);
   assert(cmd.debug == true);
+
+  assert(parse_line("ROUTE IP 8.8.8.8 DEBUG false", &cmd) == true);
+  assert(cmd.is_valid == true);
+  assert(strcmp(cmd.ip, "8.8.8.8") == 0);
+  assert(cmd.debug == false);
+
+  /* DEBUG con valor invalido */
+  assert(parse_line("ROUTE IP 8.8.8.8 DEBUG hola", &cmd) == false);
 
   /* IP invalida */
   assert(parse_line("ROUTE IP abc.def.ghi.jkl", &cmd) == false);

@@ -119,8 +119,8 @@ static void test_t11_primitiva_7_set_route(void) {
   uint32_t dest_u;
   int prio;
 
-  /* Sin prioridad */
-  assert(parse_line("SET ROUTE casa DEST 192.168.1.0 MASK /24", &cmd) == true);
+  /* Con prioridad obligatoria */
+  assert(parse_line("SET ROUTE casa NETWORK NUMBER 192.168.1.0 MASK /24 PRIORITY 1", &cmd) == true);
   assert(extraer_parametros_comando(&cmd, &params) == true);
 
   assert(params.primitive == PRIMITIVE_SET_ROUTE);
@@ -128,10 +128,10 @@ static void test_t11_primitiva_7_set_route(void) {
   assert(params.has_dest_net == true && strcmp(params.dest_net, "192.168.1.0") == 0);
   assert(params.dest_net_uint == 3232235776U);
   assert(params.has_mask == true && params.mask_cidr == 24);
-  assert(params.has_priority == false);
+  assert(params.has_priority == true && params.priority == 1);
 
   /* Con prioridad */
-  assert(parse_line("SET ROUTE oficina DEST 10.0.0.0 MASK /8 PRIORITY 15", &cmd) == true);
+  assert(parse_line("SET ROUTE oficina NETWORK NUMBER 10.0.0.0 MASK /8 PRIORITY 15", &cmd) == true);
   assert(extraer_parametros_comando(&cmd, &params) == true);
 
   assert(params.has_route_name == true && strcmp(params.route_name, "oficina") == 0);
@@ -196,7 +196,7 @@ static void test_t11_primitiva_10_route_ip(void) {
   assert(params.debug == false);
 
   /* Con DEBUG */
-  assert(parse_line("ROUTE IP 8.8.8.8 DEBUG", &cmd) == true);
+  assert(parse_line("ROUTE IP 8.8.8.8 DEBUG true", &cmd) == true);
   assert(extraer_parametros_comando(&cmd, &params) == true);
 
   assert(params.debug == true);
