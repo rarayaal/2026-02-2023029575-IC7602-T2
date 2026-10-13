@@ -574,7 +574,8 @@ bool parse_line(const char *input, parsed_command_t *cmd) {
     }
   }
 
-  /* 7. SET ROUTE <NAME> DEST <NET> MASK <MASK> [PRIORITY <NUM>] */
+  /* 7. SET ROUTE <NAME> NETWORK NUMBER <NET> MASK <MASK> PRIORITY <NUM>
+     o  SET ROUTE <NAME> DEST <NET> MASK <MASK> PRIORITY <NUM> */
   if (strcmp(t0, "SET") == 0) {
     if (ntokens < 2) {
       err_cat_invalid_syntax(cmd->error_msg, sizeof(cmd->error_msg), "comando SET");
@@ -585,53 +586,98 @@ bool parse_line(const char *input, parsed_command_t *cmd) {
 
     if (strcmp(t1, "ROUTE") == 0) {
       cmd->primitive = PRIMITIVE_SET_ROUTE;
-      if (ntokens < 7) {
+      if (ntokens < 3) {
         err_cat_missing_param(cmd->error_msg, sizeof(cmd->error_msg),
-                              "SET ROUTE", "requiere <NAME> DEST <NET> MASK <MASK>");
+                              "SET ROUTE", "nombre");
         return false;
       }
 
-      char p3[MAX_TOKEN_LEN], p5[MAX_TOKEN_LEN];
-      snprintf(p3, sizeof(p3), "%s", tokens[3]); str_to_upper(p3);
-      snprintf(p5, sizeof(p5), "%s", tokens[5]); str_to_upper(p5);
+      size_t ip_idx = 0;
+      size_t mask_kw_idx = 0;
+      size_t mask_val_idx = 0;
+      size_t prio_kw_idx = 0;
+      size_t prio_val_idx = 0;
 
-      if ((strcmp(p3, "DEST") != 0 && strcmp(p3, "DESTINATION") != 0 && strcmp(p3, "NET") != 0) ||
-          strcmp(p5, "MASK") != 0) {
+      char p3[MAX_TOKEN_LEN];
+      snprintf(p3, sizeof(p3), "%s", tokens[3]); str_to_upper(p3);
+
+      if (strcmp(p3, "NETWORK") == 0) {
+        if (ntokens < 5) {
+          err_cat_missing_param(cmd->error_msg, sizeof(cmd->error_msg),
+                                "SET ROUTE", "NETWORK NUMBER");
+          return false;
+        }
+        char p4[MAX_TOKEN_LEN];
+        snprintf(p4, sizeof(p4), "%s", tokens[4]); str_to_upper(p4);
+        if (strcmp(p4, "NUMBER") != 0) {
+          err_cat_expected_keyword(cmd->error_msg, sizeof(cmd->error_msg), "SET ROUTE", "NUMBER");
+          return false;
+        }
+        ip_idx = 5;
+        mask_kw_idx = 6;
+        mask_val_idx = 7;
+        prio_kw_idx = 8;
+        prio_val_idx = 9;
+      } else if (strcmp(p3, "DEST") == 0 || strcmp(p3, "DESTINATION") == 0 || strcmp(p3, "NET") == 0) {
+        ip_idx = 4;
+        mask_kw_idx = 5;
+        mask_val_idx = 6;
+        prio_kw_idx = 7;
+        prio_val_idx = 8;
+      } else {
         err_cat_invalid_syntax(cmd->error_msg, sizeof(cmd->error_msg), "SET ROUTE");
         return false;
       }
 
-      if (!validar_ip(tokens[4])) {
-        err_cat_invalid_ip(cmd->error_msg, sizeof(cmd->error_msg), tokens[4]);
+      if (ntokens <= prio_kw_idx) {
+        if (ntokens <= mask_val_idx) {
+          err_cat_missing_param(cmd->error_msg, sizeof(cmd->error_msg), "SET ROUTE", "MASK");
+        } else {
+          err_cat_missing_param(cmd->error_msg, sizeof(cmd->error_msg), "SET ROUTE", "PRIORITY");
+        }
         return false;
       }
-      if (!validar_mascara(tokens[6])) {
-        err_cat_invalid_mask(cmd->error_msg, sizeof(cmd->error_msg), tokens[6]);
+
+      if (ntokens > prio_val_idx + 1) {
+        err_cat_extra_params(cmd->error_msg, sizeof(cmd->error_msg), "SET ROUTE");
+        return false;
+      }
+
+      char pmask_kw[MAX_TOKEN_LEN];
+      snprintf(pmask_kw, sizeof(pmask_kw), "%s", tokens[mask_kw_idx]); str_to_upper(pmask_kw);
+      if (strcmp(pmask_kw, "MASK") != 0) {
+        err_cat_expected_keyword(cmd->error_msg, sizeof(cmd->error_msg), "SET ROUTE", "MASK");
+        return false;
+      }
+
+      if (!validar_ip(tokens[ip_idx])) {
+        err_cat_invalid_ip(cmd->error_msg, sizeof(cmd->error_msg), tokens[ip_idx]);
+        return false;
+      }
+
+      if (!validar_mascara(tokens[mask_val_idx])) {
+        err_cat_invalid_mask(cmd->error_msg, sizeof(cmd->error_msg), tokens[mask_val_idx]);
+        return false;
+      }
+
+      char pprio_kw[MAX_TOKEN_LEN];
+      snprintf(pprio_kw, sizeof(pprio_kw), "%s", tokens[prio_kw_idx]); str_to_upper(pprio_kw);
+      if (strcmp(pprio_kw, "PRIORITY") != 0) {
+        err_cat_expected_keyword(cmd->error_msg, sizeof(cmd->error_msg), "SET ROUTE", "PRIORITY");
+        return false;
+      }
+
+      if (!es_numero(tokens[prio_val_idx])) {
+        err_cat_invalid_numeric(cmd->error_msg, sizeof(cmd->error_msg), "PRIORITY", tokens[prio_val_idx]);
         return false;
       }
 
       /* Preservar insensibilidad a mayusculas/minusculas para el nombre de ruta <NAME> */
       snprintf(cmd->name, sizeof(cmd->name), "%.63s", tokens[2]);
-      snprintf(cmd->dest, sizeof(cmd->dest), "%.63s", tokens[4]);
-      snprintf(cmd->mask, sizeof(cmd->mask), "%.63s", tokens[6]);
-
-      if (ntokens == 9) {
-        char p7[MAX_TOKEN_LEN];
-        snprintf(p7, sizeof(p7), "%s", tokens[7]); str_to_upper(p7);
-        if (strcmp(p7, "PRIORITY") != 0) {
-          err_cat_expected_keyword(cmd->error_msg, sizeof(cmd->error_msg), "SET ROUTE", "PRIORITY");
-          return false;
-        }
-        if (!es_numero(tokens[8])) {
-          err_cat_invalid_numeric(cmd->error_msg, sizeof(cmd->error_msg), "PRIORITY", tokens[8]);
-          return false;
-        }
-        cmd->priority = atoi(tokens[8]);
-        cmd->has_priority = true;
-      } else if (ntokens != 7) {
-        err_cat_extra_params(cmd->error_msg, sizeof(cmd->error_msg), "SET ROUTE");
-        return false;
-      }
+      snprintf(cmd->dest, sizeof(cmd->dest), "%.63s", tokens[ip_idx]);
+      snprintf(cmd->mask, sizeof(cmd->mask), "%.63s", tokens[mask_val_idx]);
+      cmd->priority = atoi(tokens[prio_val_idx]);
+      cmd->has_priority = true;
 
       cmd->is_valid = true;
       return true;
@@ -665,7 +711,7 @@ bool parse_line(const char *input, parsed_command_t *cmd) {
     }
   }
 
-  /* 10. ROUTE IP <IP> [DEBUG] */
+  /* 10. ROUTE IP <IP> [DEBUG [true|false]] */
   if (strcmp(t0, "ROUTE") == 0) {
     if (ntokens < 2) {
       err_cat_invalid_syntax(cmd->error_msg, sizeof(cmd->error_msg), "comando ROUTE");
@@ -700,12 +746,32 @@ bool parse_line(const char *input, parsed_command_t *cmd) {
         return false;
       }
 
+      /* DEBUG es opcional, por defecto false */
+      cmd->debug = false;
+
       if (debug_idx < ntokens) {
         char pdebug[MAX_TOKEN_LEN];
         snprintf(pdebug, sizeof(pdebug), "%s", tokens[debug_idx]); str_to_upper(pdebug);
         if (strcmp(pdebug, "DEBUG") == 0) {
-          cmd->debug = true;
           debug_idx++;
+          if (debug_idx < ntokens) {
+            char pval[MAX_TOKEN_LEN];
+            snprintf(pval, sizeof(pval), "%s", tokens[debug_idx]); str_to_upper(pval);
+            if (strcmp(pval, "TRUE") == 0) {
+              cmd->debug = true;
+              debug_idx++;
+            } else if (strcmp(pval, "FALSE") == 0) {
+              cmd->debug = false;
+              debug_idx++;
+            } else {
+              err_cat_invalid_syntax(cmd->error_msg, sizeof(cmd->error_msg), "valor invalido para DEBUG (esperado true o false)");
+              return false;
+            }
+          } else {
+            /* DEBUG requiere obligatoriamente valor true o false cuando esta presente */
+            err_cat_missing_param(cmd->error_msg, sizeof(cmd->error_msg), "ROUTE IP DEBUG", "valor booleano (true o false)");
+            return false;
+          }
         } else {
           err_cat_unrecognized_param(cmd->error_msg, sizeof(cmd->error_msg), "ROUTE IP", tokens[debug_idx]);
           return false;

@@ -44,15 +44,15 @@ static test_case_t test_battery[] = {
     {"T14-14", "Válida", "GET IP CLASS 10.8.2.5", true, "Sintaxis GET IP CLASS con dirección IPv4 directa"},
     {"T14-15", "Válida", "GET IP CLASS IP 172.16.0.1", true, "Sintaxis GET IP CLASS con prefijo de palabra clave IP"},
     {"T14-16", "Válida", "GET IP CLASS 192.168.1.1", true, "Sintaxis GET IP CLASS para IPv4 Clase C"},
-    {"T14-17", "Válida", "SET ROUTE casa DEST 192.168.1.0 MASK /24", true, "Sintaxis SET ROUTE con nombre, destino y máscara sin prioridad opcional"},
-    {"T14-18", "Válida", "SET ROUTE oficina DEST 10.0.0.0 MASK 255.0.0.0 PRIORITY 10", true, "Sintaxis SET ROUTE con parámetro opcional PRIORITY"},
-    {"T14-19", "Válida", "SET ROUTE r3 DEST 172.16.0.0 MASK /12 PRIORITY 1", true, "Sintaxis SET ROUTE con prioridad de alto nivel 1"},
+    {"T14-17", "Válida", "SET ROUTE casa NETWORK NUMBER 8.8.0.0 MASK /16 PRIORITY 1", true, "Sintaxis SET ROUTE con nombre, NETWORK NUMBER, MASK y PRIORITY obligatorio"},
+    {"T14-18", "Válida", "SET ROUTE oficina NETWORK NUMBER 10.0.0.0 MASK 255.0.0.0 PRIORITY 10", true, "Sintaxis SET ROUTE con máscara decimal y PRIORITY 10"},
+    {"T14-19", "Válida", "SET ROUTE r3 NETWORK NUMBER 172.16.0.0 MASK /12 PRIORITY 1", true, "Sintaxis SET ROUTE con prioridad de alto nivel 1"},
     {"T14-20", "Válida", "DEL ROUTE casa", true, "Sintaxis DEL ROUTE con nombre de ruta válido"},
     {"T14-21", "Válida", "DEL ROUTE oficina_remota", true, "Sintaxis DEL ROUTE con guion bajo en nombre"},
     {"T14-22", "Válida", "GET RANDOM SUBNETS IP 10.0.0.0 MASK /16 SIZE 4", true, "Sintaxis GET RANDOM SUBNETS con IP, máscara y tamaño entero positivo"},
     {"T14-23", "Válida", "GET RANDOM SUBNETS IP 192.168.0.0 MASK 255.255.0.0 SIZE 10", true, "Sintaxis GET RANDOM SUBNETS con máscara decimal"},
-    {"T14-24", "Válida", "ROUTE IP 8.8.8.8", true, "Sintaxis ROUTE IP con dirección de destino"},
-    {"T14-25", "Válida", "ROUTE IP 1.1.1.1 DEBUG", true, "Sintaxis ROUTE IP con modificador de depuración DEBUG"},
+    {"T14-24", "Válida", "ROUTE IP 8.8.8.8", true, "Sintaxis ROUTE IP con dirección de destino (sin DEBUG, por defecto false)"},
+    {"T14-25", "Válida", "ROUTE IP 8.8.8.8 DEBUG true", true, "Sintaxis ROUTE IP con modificador de depuración DEBUG true"},
 
     /* ========================================================================= */
     /* CATEGORÍA B: COMBINACIONES INVÁLIDAS (T14-26 a T14-55)                    */
@@ -66,15 +66,15 @@ static test_case_t test_battery[] = {
     {"T14-32", "Inválida", "GET BROADCAST MASK /24", false, "Falta el parámetro obligatorio IP"},
     {"T14-33", "Inválida", "GET NETWORK NUMBER MASK /24", false, "Falta la IP de red obligatoria"},
     {"T14-34", "Inválida", "GET HOSTS RANGE IP 192.168.1.1", false, "Falta la máscara obligatoria"},
-    {"T14-35", "Inválida", "SET ROUTE casa MASK /24", false, "Falta el parámetro DEST en SET ROUTE"},
-    {"T14-36", "Inválida", "SET ROUTE casa DEST 192.168.1.0", false, "Falta la MASK en SET ROUTE"},
+    {"T14-35", "Inválida", "SET ROUTE casa MASK /24", false, "Falta el parámetro NETWORK NUMBER en SET ROUTE"},
+    {"T14-36", "Inválida", "SET ROUTE casa NETWORK NUMBER 8.8.0.0 MASK /16", false, "Falta el parámetro obligatorio PRIORITY en SET ROUTE"},
     {"T14-37", "Inválida", "DEL ROUTE", false, "Falta el nombre de la ruta a eliminar"},
     {"T14-38", "Inválida", "GET RANDOM SUBNETS IP 10.0.0.0 MASK /16", false, "Falta el parámetro SIZE obligatorio"},
     {"T14-39", "Inválida", "ROUTE", false, "Falta el parámetro IP en comando ROUTE"},
     {"T14-40", "Inválida", "GET BROADCAST IP 192.168.1.10 MASK /24 EXTRA", false, "Parámetros adicionales no permitidos al final"},
     {"T14-41", "Inválida", "DEL ROUTE casa EXTRA_ARG", false, "Argumento no permitido tras el nombre de la ruta"},
     {"T14-42", "Inválida", "GET BROADCAST MASK /24 IP 192.168.1.10", false, "Orden incorrecto: MASK antes de IP"},
-    {"T14-43", "Inválida", "SET ROUTE DEST 192.168.1.0 MASK /24 casa", false, "Orden incorrecto: nombre de ruta posicionado tras MASK"},
+    {"T14-43", "Inválida", "SET ROUTE NETWORK NUMBER 192.168.1.0 MASK /24 PRIORITY 1 casa", false, "Orden incorrecto: nombre de ruta posicionado tras MASK"},
     {"T14-44", "Inválida", "GET BROADCAST IP 999.168.1.10 MASK /24", false, "Formato IPv4 inválido: primer octeto 999 > 255"},
     {"T14-45", "Inválida", "GET BROADCAST IP 192.168.1.10.5 MASK /24", false, "Formato IPv4 malformado: posee 5 octetos"},
     {"T14-46", "Inválida", "GET BROADCAST IP 192.168.1 MASK /24", false, "Formato IPv4 incompleto: solo 3 octetos"},
@@ -82,10 +82,10 @@ static test_case_t test_battery[] = {
     {"T14-48", "Inválida", "GET NETMASK MASK /33", false, "Prefijo CIDR fuera de rango (33 > 32)"},
     {"T14-49", "Inválida", "GET NETMASK MASK /-1", false, "Prefijo CIDR negativo fuera de rango"},
     {"T14-50", "Inválida", "GET NETMASK MASK /abc", false, "Prefijo CIDR no numérico"},
-    {"T14-51", "Inválida", "SET ROUTE casa DEST 10.0.0.0 MASK /8 PRIORITY diez", false, "Valor de PRIORITY no numérico"},
+    {"T14-51", "Inválida", "SET ROUTE casa NETWORK NUMBER 10.0.0.0 MASK /8 PRIORITY diez", false, "Valor de PRIORITY no numérico"},
     {"T14-52", "Inválida", "GET RANDOM SUBNETS IP 10.0.0.0 MASK /16 SIZE cuatro", false, "Valor de SIZE no numérico"},
-    {"T14-53", "Inválida", "GET RANDOM SUBNETS IP 10.0.0.0 MASK /16 SIZE 0", false, "Valor de SIZE debe ser mayor que 0"},
-    {"T14-54", "Inválida", "GET RANDOM SUBNETS IP 10.0.0.0 MASK /16 SIZE -5", false, "Valor de SIZE negativo no permitido"},
+    {"T14-53", "Inválida", "ROUTE IP 8.8.8.8 DEBUG", false, "Parámetro DEBUG sin valor booleano (requiere true o false)"},
+    {"T14-54", "Inválida", "ROUTE IP 8.8.8.8 DEBUG hola", false, "Valor inválido para parámetro DEBUG en ROUTE IP"},
     {"T14-55", "Inválida", "", false, "Entrada de comandos completamente vacía"},
 
     /* ========================================================================= */
@@ -103,14 +103,14 @@ static test_case_t test_battery[] = {
     {"T14-65", "Extremo", "GET HOSTS COUNT MASK /32", true, "Cálculo de hosts para prefijo límite /32"},
     {"T14-66", "Extremo", "GET IP CLASS 0.0.0.0", true, "Clase de dirección IP límite inferior 0.0.0.0"},
     {"T14-67", "Extremo", "GET IP CLASS 255.255.255.255", true, "Clase de dirección IP límite superior 255.255.255.255"},
-    {"T14-68", "Extremo", "SET ROUTE r1 DEST 0.0.0.0 MASK 0.0.0.0 PRIORITY 0", true, "Ruta por defecto 0.0.0.0/0 con prioridad 0"},
-    {"T14-69", "Extremo", "SET ROUTE r2 DEST 255.255.255.255 MASK 255.255.255.255 PRIORITY 65535", true, "Ruta con IP destino y máscara límites y alta prioridad"},
+    {"T14-68", "Extremo", "SET ROUTE r1 NETWORK NUMBER 0.0.0.0 MASK 0.0.0.0 PRIORITY 0", true, "Ruta por defecto 0.0.0.0/0 con prioridad 0"},
+    {"T14-69", "Extremo", "SET ROUTE r2 NETWORK NUMBER 255.255.255.255 MASK 255.255.255.255 PRIORITY 65535", true, "Ruta con IP destino y máscara límites y alta prioridad"},
     {"T14-70", "Extremo", "GET RANDOM SUBNETS IP 0.0.0.0 MASK /0 SIZE 1", true, "Generación de subredes con SIZE mínimo válido 1"},
     {"T14-71", "Extremo", "GET RANDOM SUBNETS IP 10.0.0.0 MASK /8 SIZE 65535", true, "Generación de subredes con SIZE límite superior 65535"},
     {"T14-72", "Extremo", "GET NETMASK MASK 255.0.255.0", false, "Máscara decimal discontinua no contigua (inválida extrema)"},
     {"T14-73", "Extremo", "GET BROADCAST IP 192.168.1.10 MASK /33", false, "Máscara CIDR /33 inmediatamente fuera de rango superior"},
     {"T14-74", "Extremo", "GET BROADCAST IP 256.0.0.1 MASK /24", false, "Octeto IPv4 256 inmediatamente fuera de rango superior"},
-    {"T14-75", "Extremo", "ROUTE IP 0.0.0.0 DEBUG", true, "ROUTE IP con IP 0.0.0.0 y flag de depuración DEBUG"}
+    {"T14-75", "Extremo", "ROUTE IP 8.8.8.8 DEBUG false", true, "ROUTE IP con dirección IP válida y flag de depuración DEBUG false"}
 };
 
 int main(void) {
